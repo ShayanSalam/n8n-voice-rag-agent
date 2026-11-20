@@ -1,0 +1,512 @@
+{
+  "name": "RAG_System",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1B2zBoBsfwG3Rz7nqciWgrOGofu8J3VZ1",
+          "mode": "list",
+          "cachedResultName": "RagKnowledgeBase",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1B2zBoBsfwG3Rz7nqciWgrOGofu8J3VZ1"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        96
+      ],
+      "id": "6dc5ce32-2e59-4db7-8fd9-7d28254332f1",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "MUrcw9dps0eWH22j",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1623UpjD6RX6ETj4-HkbWBVSVcpgUPBU7",
+          "mode": "list",
+          "cachedResultName": "KnowledgeBase01.pdf",
+          "cachedResultUrl": "https://drive.google.com/file/d/1623UpjD6RX6ETj4-HkbWBVSVcpgUPBU7/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -208,
+        96
+      ],
+      "id": "dac829b6-a494-490e-a309-98fb6b73c737",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "MUrcw9dps0eWH22j",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "Knowledge_base",
+          "mode": "list",
+          "cachedResultName": "Knowledge_base"
+        },
+        "embeddingBatchSize": 3,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.4,
+      "position": [
+        688,
+        -32
+      ],
+      "id": "e2e75bde-9386-4a53-a7d6-2994b191700a",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "FtwKgLZmgZYukfH4",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        576,
+        336
+      ],
+      "id": "b9ba7ceb-00f7-4481-b0df-304ec4986474",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YhmNvNJC6gPK8JlP",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "file-name",
+                "value": "={{ $('Download file').item.json.name }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        336
+      ],
+      "id": "c12529ec-d0a7-4148-8099-30d94fb2fbc1",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        96
+      ],
+      "id": "05e5b6fd-2b61-4407-be0e-a3d6df548919",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.text;\nconst size = 2500;\nconst overlap = 300;\nconst chunks = [];\nfor (let i = 0; i < text.length; i += (size - overlap)) {\n  const slice = text.slice(i, i + size).trim();\n  if (slice.length > 0) {\n    chunks.push({ json: { text: slice } });\n  }\n}\nreturn chunks;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        96
+      ],
+      "id": "e09f6d29-aafc-4634-933c-fc677e05452b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        464,
+        96
+      ],
+      "id": "a66a26c9-3f52-4a3f-926d-740da3d97cd1",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        96
+      ],
+      "id": "b64e3baa-9517-425d-8737-f68e71b3911c",
+      "name": "Wait",
+      "webhookId": "8a55a90d-349a-499d-b563-d0429823119c"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.question }}",
+        "options": {
+          "systemMessage": "You are a helpful document assistant. Always use the Knowledge_base tool to search uploaded documents before answering. Once the data is retrieved, provide a clear, concise answer in plain spoken language without bullet points, markdown, or asterisks. If the answer is not in the retrieved documents, say 'I cannot find that information in the uploaded documents.'\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1168,
+        -96
+      ],
+      "id": "bf4006c2-e498-4cde-84c5-b98478bf3094",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -1296,
+        144
+      ],
+      "id": "551071f5-433b-4672-abdc-a58705cc2349",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YhmNvNJC6gPK8JlP",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.session_id || 'elevenlabs_voice_session' }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.6,
+      "position": [
+        -1088,
+        144
+      ],
+      "id": "53f83fd1-feac-4e2f-95fa-cd1cbbdd6603",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "YSOaapWxNlFO4oE5",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search the uploaded documents in the knowledge base to answer user questions with exact facts, figures, and details.",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "Knowledge_base",
+          "mode": "list",
+          "cachedResultName": "Knowledge_base"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.4,
+      "position": [
+        -960,
+        144
+      ],
+      "id": "d76d4f71-0e46-4db9-8070-52c368ece803",
+      "name": "Qdrant Vector Store1",
+      "credentials": {
+        "qdrantApi": {
+          "id": "FtwKgLZmgZYukfH4",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        352
+      ],
+      "id": "88ed335c-a648-4c4d-a811-c49f659c2f05",
+      "name": "Embeddings Google Gemini1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YhmNvNJC6gPK8JlP",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-rag",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -1392,
+        -96
+      ],
+      "id": "b1569ec8-a6dc-456a-a18c-2814f58d933c",
+      "name": "Webhook",
+      "webhookId": "998a046b-d485-43d6-998b-c2fa4e8a8ac4",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "0bZ6XhLUGOdy5HJD",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"answer\": \"{{ $json.output }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -800,
+        -96
+      ],
+      "id": "c93b27e5-36f5-494e-bf5b-462f45676aef",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "22f61e20-22fc-4b79-9f1e-19c666eeda61",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "455e0d8ae099fc905bb0a6572d9bc0fe3f796f719891f737e82a221fe7232333"
+  },
+  "nodeGroups": [],
+  "id": "nBW2CZQe3sMVHtlQ",
+  "tags": []
+}
